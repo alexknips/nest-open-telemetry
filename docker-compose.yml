@@ -1,0 +1,58 @@
+version: '3.7'
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "4318:4318"
+      - "4317:4317"
+    environment:
+      - LOG_LEVEL=debug
+    networks:
+      - jaeger-example
+  nestapp1:
+    image: nestapp1
+    build:
+      context: nest1
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    networks:
+      - jaeger-example
+    depends_on:
+      - jaeger
+      - nestapp2
+      - nestapp3
+  nestapp2:
+    image: nestapp2
+    build:
+      context: nest2
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    networks:
+      - jaeger-example
+    depends_on:
+      - jaeger
+      - nestapp3
+  nestapp3:
+    image: nestapp3
+    build:
+      context: nest3
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    networks:
+      - jaeger-example
+    depends_on:
+      - jaeger
+
+networks:
+  jaeger-example:

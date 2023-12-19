@@ -1,0 +1,8 @@
+logs_enabled: true
+otlp_config:
+  logs:
+    enabled: true
+  receiver:
+    protocols:
+      http:
+        endpoint: localhost:4318
