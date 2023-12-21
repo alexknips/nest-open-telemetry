@@ -13,10 +13,6 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
-import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-
-// Set an internal logger for open telemetry to report any issues to your console/stdout
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.WARN);
 
 // Configure the SDK to export telemetry data to the console
 // Enable all auto-instrumentations from the meta package
