@@ -1,5 +1,70 @@
 version: '3.7'
 services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://debezium-connect:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    networks:
+      - jaeger-example
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    ports:
+      - '2181:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - jaeger-example
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - '29092:29092'
+      - '9092:9092'
+      - '9101:9101'
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+    healthcheck:
+      test: ['CMD', 'kafka-topics', '--bootstrap-server', 'kafka:29092', '--list']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - jaeger-example
+  wait-kafka-init:
+    image: confluentinc/cp-kafka:7.2.1
+    hostname: wait-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-c']
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics --bootstrap-server kafka:29092 --list
+
+      echo -e 'Kafka is reachable'
+      "
+    networks:
+      - jaeger-example
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
@@ -19,12 +84,14 @@ services:
       - "3001:3000"
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     networks:
       - jaeger-example
     depends_on:
       - jaeger
       - nestapp2
       - nestapp3
+      - wait-kafka-init
   nestapp2:
     image: nestapp2
     build:
@@ -34,11 +101,13 @@ services:
       - "3002:3000"
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     networks:
       - jaeger-example
     depends_on:
       - jaeger
       - nestapp3
+      - wait-kafka-init
   nestapp3:
     image: nestapp3
     build:
@@ -48,10 +117,12 @@ services:
       - "3003:3000"
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
     networks:
       - jaeger-example
     depends_on:
       - jaeger
+      - wait-kafka-init
 
 networks:
   jaeger-example:

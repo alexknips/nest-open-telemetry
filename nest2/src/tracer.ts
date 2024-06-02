@@ -13,6 +13,7 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
+import { KafkaJsInstrumentation } from 'opentelemetry-instrumentation-kafkajs';
 
 // Configure the SDK to export telemetry data to the console
 // Enable all auto-instrumentations from the meta package
@@ -35,6 +36,9 @@ const sdk = new NodeSDK({
     new NestInstrumentation(),
     new HttpInstrumentation(),
     new ExpressInstrumentation(),
+    new KafkaJsInstrumentation({
+      // see under for available configuration
+    })
   ],
   resource: new Resource({
     [SemanticResourceAttributes.SERVICE_NAME]: 'nest2',
